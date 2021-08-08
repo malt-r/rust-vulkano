@@ -9,6 +9,7 @@ use vulkano::device::Features;
 
 use vulkano::buffer::BufferUsage;
 use vulkano::buffer::CpuAccessibleBuffer;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage};
 
 fn main() {
     println!("Hello, world!");
@@ -53,13 +54,45 @@ fn main() {
 
     let data = 12; // sample data
 
-    let buffer = CpuAccessibleBuffer::from_data
+    let sample_buffer = CpuAccessibleBuffer::from_data
         (
             device.clone(), // the device to create a buffer for (clones only the Arc) (does this increase the reference count? yes, it does).
             BufferUsage::all(), // the intended usage of the buffer, using the buffer in a way, which was not specified during construction will result in an error
             false, // is the Buffer CPU cached? false for most cases, only useful, if the cpu is expected to constantly stream data to the gpu by this
             data // content for the buffer
         ).expect("failed to create buffer");
+
+    // create input data as range from 0 to 63 and output as 64 zeros
+    let input_data = (0..63);
+    let output_data = (0..63).map(|_|0);
+
+    let input_buffer = CpuAccessibleBuffer::from_iter
+        (
+            device.clone(), // the device to create a buffer for (clones only the Arc) (does this increase the reference count? yes, it does).
+            BufferUsage::all(), // the intended usage of the buffer, using the buffer in a way, which was not specified during construction will result in an error
+            false, // is the Buffer CPU cached? false for most cases, only useful, if the cpu is expected to constantly stream data to the gpu by this
+            input_data // content for the buffer
+        ).expect("failed to create buffer");
+
+    let output_buffer = CpuAccessibleBuffer::from_iter
+        (
+            device.clone(), // the device to create a buffer for (clones only the Arc) (does this increase the reference count? yes, it does).
+            BufferUsage::all(), // the intended usage of the buffer, using the buffer in a way, which was not specified during construction will result in an error
+            false, // is the Buffer CPU cached? false for most cases, only useful, if the cpu is expected to constantly stream data to the gpu by this
+            output_data // content for the buffer
+        ).expect("failed to create buffer");
+
+    let mut builder = AutoCommandBufferBuilder::primary
+        (
+            device.clone(),
+            queue.family(),
+            CommandBufferUsage::SimultaneousUse
+        ).unwrap();
+    builder.copy_buffer(input_buffer.clone(), output_buffer.clone()).unwrap();
+    let command_buffer = builder.build().unwrap();
+
+    // needs to be submitted and synched
+
 
     loop {
 
