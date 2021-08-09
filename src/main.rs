@@ -11,6 +11,8 @@ use vulkano::buffer::BufferUsage;
 use vulkano::buffer::CpuAccessibleBuffer;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, PrimaryCommandBuffer};
 use vulkano::sync::GpuFuture;
+use simple_stopwatch::Stopwatch;
+
 
 fn main() {
     println!("Hello, world!");
@@ -93,6 +95,8 @@ fn main() {
     builder.copy_buffer(input_buffer.clone(), output_buffer.clone()).unwrap();
     let command_buffer = builder.build().unwrap();
 
+    let sw = Stopwatch::start_new();
+
     // needs to be submitted and synched
     let finished = command_buffer.execute(queue.clone()).unwrap();
 
@@ -103,5 +107,8 @@ fn main() {
     let input_content = input_buffer.read().unwrap();
     let output_content = output_buffer.read().unwrap();
 
+    let us = sw.us();
+
     debug_assert_eq!(&*input_content, &*output_content, "input content is not equal to output content");
+    println!("timed {} us", us);
 }
