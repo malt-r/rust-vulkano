@@ -1,7 +1,7 @@
 use vulkano::instance::Instance;
 use vulkano::instance::InstanceExtensions;
 use vulkano::Version;
-use vulkano::instance::PhysicalDevice;
+use vulkano::device::physical::PhysicalDevice;
 
 use vulkano::device::Device;
 use vulkano::device::DeviceExtensions;
@@ -11,8 +11,31 @@ use vulkano::buffer::BufferUsage;
 use vulkano::buffer::CpuAccessibleBuffer;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, PrimaryCommandBuffer};
 use vulkano::sync::GpuFuture;
+
+// atomically reference counted
+use std::sync::Arc;
+use vulkano::pipeline::ComputePipeline;
+
 use simple_stopwatch::Stopwatch;
 
+mod cs {
+    vulkano_shaders::shader!{
+        ty: "compute",
+        src: "
+#version 450
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer Data {
+    uint data[];
+} buf;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    buf.data[idx] *= 12;
+}"
+    }
+}
 
 fn main() {
     println!("Hello, world!");
@@ -111,4 +134,11 @@ fn main() {
 
     debug_assert_eq!(&*input_content, &*output_content, "input content is not equal to output content");
     println!("timed {} us", us);
+
+    let shader = cs::Shader::load(device.clone()).expect("failed to create compute pipeline");
+
+    // needs device, entry point for shader and specs constants (empty)
+    let compite_pipeline = Arc::new(ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).expect("Error to create compute pipeline"));
+
+
 }
