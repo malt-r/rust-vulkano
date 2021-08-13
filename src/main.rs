@@ -15,6 +15,9 @@ use vulkano::sync::GpuFuture;
 // atomically reference counted
 use std::sync::Arc;
 use vulkano::pipeline::ComputePipeline;
+use vulkano::pipeline::layout::PipelineLayout;
+use vulkano::descriptor_set::PersistentDescriptorSet;
+use vulkano::pipeline::ComputePipelineAbstract;
 
 use simple_stopwatch::Stopwatch;
 
@@ -138,7 +141,42 @@ fn main() {
     let shader = cs::Shader::load(device.clone()).expect("failed to create compute pipeline");
 
     // needs device, entry point for shader and specs constants (empty)
-    let compite_pipeline = Arc::new(ComputePipeline::new(device.clone(), &shader.main_entry_point(), &(), None).expect("Error to create compute pipeline"));
+    let compute_pipeline = Arc::new
+        (
+            ComputePipeline::new
+            (
+                device.clone(),
+                &shader.main_entry_point(),
+                &(),
+                None
+            ).expect("Error to create compute pipeline")
+        );
 
+    // create buffer
+    let iter  = 0..65536;
+    let data_buffer = CpuAccessibleBuffer::from_iter
+        (
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            iter
+        ).expect("Error creating data buffer");
 
+    // bind buffer to pipeline
+    let layout_slice = compute_pipeline.layout().descriptor_set_layouts();
+    let layout = &layout_slice[0];
+
+    // create new descriptor_set and add buffer at position 0
+    // Vulkan requires supply of a pipeline for the creation of a descriptor set
+    // but this set can be used with other pipelines afterward, so long as the
+    // layout matches the expected layout by the shader
+    let set = Arc::new
+        (PersistentDescriptorSet::start
+         (
+             layout.clone()
+         )
+         .add_buffer
+         (
+             data_buffer.clone()
+         ).unwrap());
 }
