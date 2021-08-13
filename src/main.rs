@@ -111,33 +111,35 @@ fn main() {
             output_data // content for the buffer
         ).expect("failed to create buffer");
 
-    let mut builder = AutoCommandBufferBuilder::primary
-        (
-            device.clone(),
-            queue.family(),
-            CommandBufferUsage::SimultaneousUse
-        ).unwrap();
+    // sample command buffer
+    //let mut builder = AutoCommandBufferBuilder::primary
+    //    (
+    //        device.clone(),
+    //        queue.family(),
+    //        CommandBufferUsage::SimultaneousUse
+    //    ).unwrap();
 
-    builder.copy_buffer(input_buffer.clone(), output_buffer.clone()).unwrap();
-    let command_buffer = builder.build().unwrap();
+    //builder.copy_buffer(input_buffer.clone(), output_buffer.clone()).unwrap();
+    //let command_buffer = builder.build().unwrap();
 
-    let sw = Stopwatch::start_new();
+    //let sw = Stopwatch::start_new();
 
-    // needs to be submitted and synched
-    let finished = command_buffer.execute(queue.clone()).unwrap();
+    //// needs to be submitted and synched
+    //let finished = command_buffer.execute(queue.clone()).unwrap();
 
-    // ??? is there even lsp suppor for this?
-    finished.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+    //// ??? is there even lsp suppor for this?
+    //finished.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
-    // read from buffers
-    let input_content = input_buffer.read().unwrap();
-    let output_content = output_buffer.read().unwrap();
+    //// read from buffers
+    //let input_content = input_buffer.read().unwrap();
+    //let output_content = output_buffer.read().unwrap();
 
-    let us = sw.us();
+    //let us = sw.us();
 
-    debug_assert_eq!(&*input_content, &*output_content, "input content is not equal to output content");
-    println!("timed {} us", us);
+    //debug_assert_eq!(&*input_content, &*output_content, "input content is not equal to output content");
+    //println!("timed {} us", us);
 
+    // load shader for device
     let shader = cs::Shader::load(device.clone()).expect("failed to create compute pipeline");
 
     // needs device, entry point for shader and specs constants (empty)
@@ -178,5 +180,29 @@ fn main() {
          .add_buffer
          (
              data_buffer.clone()
-         ).unwrap());
+         )
+         .unwrap()
+         .build()
+         .unwrap());
+
+    let mut builder = AutoCommandBufferBuilder::primary(device.clone(), queue.family(), CommandBufferUsage::SimultaneousUse).unwrap();
+    builder.dispatch
+        (
+            [1024,1,1],
+            compute_pipeline.clone(),
+            set.clone(),
+            ()
+        ).unwrap();
+    let command_buffer = builder.build().unwrap();
+    let finished = command_buffer.execute(queue.clone()).unwrap();
+
+    // wait for completion of operation
+    finished.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+
+    // check result
+    let content = data_buffer.read().unwrap();
+    for (n, val) in content.iter().enumerate() {
+        assert_eq!(*val, n as u32 * 12);
+    }
+    println!("Operation complete!");
 }
