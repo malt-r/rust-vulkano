@@ -1,6 +1,7 @@
 pub mod compute_test;
 pub mod command_buffer_test;
 pub mod image_test;
+pub mod export_mandelbrot;
 
 use vulkano::instance::Instance;
 use vulkano::instance::InstanceExtensions;
@@ -54,8 +55,9 @@ fn main() {
     // in this example code, the queues-Iterator only conains one element
     let queue = queues.next().unwrap();
 
-    command_buffer_test::execute(queue.clone(), device.clone());
-    compute_test::execute(queue.clone(), device.clone());
-    image_test::execute(queue.clone(), device.clone());
+    //command_buffer_test::execute(queue.clone(), device.clone());
+    //compute_test::execute(queue.clone(), device.clone());
+    //image_test::execute(queue.clone(), device.clone());
+    export_mandelbrot::execute(queue.clone(), device.clone());
 }
 
