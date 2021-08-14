@@ -1,5 +1,6 @@
 pub mod compute_test;
 pub mod command_buffer_test;
+pub mod image_test;
 
 use vulkano::instance::Instance;
 use vulkano::instance::InstanceExtensions;
@@ -33,7 +34,9 @@ fn main() {
     }
 
     // find a queue of the physical device, which supports graphical operations
-    let queue_family = physical.queue_families()
+    let queue_family =
+        physical
+        .queue_families()
         .find(|&q| q.supports_graphics())
         .expect("couldn't find a graphical queue family");
 
@@ -53,4 +56,6 @@ fn main() {
 
     command_buffer_test::execute(queue.clone(), device.clone());
     compute_test::execute(queue.clone(), device.clone());
+    image_test::execute(queue.clone(), device.clone());
 }
+
