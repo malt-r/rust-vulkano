@@ -2,6 +2,7 @@ pub mod compute_test;
 pub mod command_buffer_test;
 pub mod image_test;
 pub mod export_mandelbrot;
+pub mod render_pass_sample;
 
 use vulkano::instance::Instance;
 use vulkano::instance::InstanceExtensions;
@@ -58,6 +59,7 @@ fn main() {
     //command_buffer_test::execute(queue.clone(), device.clone());
     //compute_test::execute(queue.clone(), device.clone());
     //image_test::execute(queue.clone(), device.clone());
-    export_mandelbrot::execute(queue.clone(), device.clone());
+    //export_mandelbrot::execute(queue.clone(), device.clone());
+    render_pass_sample::execute(queue.clone(), device.clone());
 }
 
