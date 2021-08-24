@@ -5,9 +5,20 @@ pub mod export_mandelbrot;
 pub mod render_pass_sample;
 pub mod window_test;
 
+use vulkano::buffer::BufferUsage;
+use vulkano::buffer::CpuAccessibleBuffer;
+use vulkano::command_buffer::DynamicState;
+use vulkano::image::SwapchainImage;
 use vulkano::instance::Instance;
 use vulkano::Version;
 use vulkano::device::physical::PhysicalDevice;
+use vulkano::pipeline::GraphicsPipeline;
+use vulkano::pipeline::viewport::Viewport;
+use vulkano::render_pass::FramebufferAbstract;
+use vulkano::render_pass::Framebuffer;
+use vulkano::render_pass::Subpass;
+use vulkano::render_pass::RenderPass;
+use vulkano::image::view;
 
 
 use vulkano::device::Device;
@@ -22,6 +33,7 @@ use winit::event_loop::EventLoop;
 use winit::event::WindowEvent;
 use winit::event::Event;
 
+use winit::window::Window;
 use winit::window::WindowBuilder;
 use winit::event_loop::ControlFlow;
 use winit::dpi::PhysicalSize;
@@ -184,8 +196,47 @@ fn main() {
     ).unwrap());
 
 
-    // TODO: create Vertex buffer and pipeline and state and framebuffer
+    // TODO: create dynamic state and framebuffer
+    let dynamic_state = DynamicState {
+        line_width: None,
+        viewports: None,
+        scissors: None,
+        compare_mask: None,
+        write_mask: None,
+        reference: None,
+    };
 
+    window_size_dependent_setup(&images, render_pass.clone(), &mut dynamic_state);
+
+    // create triangle veritces
+    let vertex1 = Vertex { position: [-0.5, -0.5]};
+    let vertex2 = Vertex { position: [ 0.0,  0.5]};
+    let vertex3 = Vertex { position: [ 0.5, -0.25]};
+
+    // create vertex buffer from vertices
+    let vertex_buffer = CpuAccessibleBuffer::from_iter
+        (
+            device.clone(),
+            BufferUsage::all(),
+            false,
+            vec![vertex1, vertex2, vertex3].into_iter()
+        ).unwrap();
+
+    // create render pipeline
+    let pipeline =
+        Arc::new (
+            GraphicsPipeline::start()
+            .vertex_input_single_buffer::<Vertex>()                         // set the input to a single vertex buffer and specify template argument
+            .vertex_shader(vertex_shader.main_entry_point(), ())            // pass the compiled vertex shader
+            .fragment_shader(fragment_shader.main_entry_point(), ())        // pass the compiled fragment shader
+            .viewports_dynamic_scissors_irrelevant(1)                       // set the viewport scissor boxes (which determine, what will be drawn) to cover the whole viewport
+            .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())    // pass the configured render pass
+            .build(device.clone())                                          // build for device
+            .unwrap()
+            );
+
+    // Event loop
+    //
     // match event to windowEvent::CloseRequested and set the control_flow to
     // Exit afterward
     //
@@ -273,3 +324,40 @@ fn main() {
     });
 }
 
+// TODO: provide convenience function to create framebuffers based
+// on current swapchain images..
+
+/// This method is called once during initialization, then again whenever the window is resized
+fn window_size_dependent_setup(
+    images: &[Arc<SwapchainImage<Window>>],
+    render_pass: Arc<RenderPass>,
+    dynamic_state: &mut DynamicState,
+) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> { // this notation specifies bounds on the implemented traits of the template parameter, i guess
+    let dimensions = images[0].dimensions();
+
+    // setup viewport data
+    let viewport = Viewport {
+        origin: [0.0, 0.0],
+        dimensions: [dimensions[0] as f32, dimensions[1] as f32],
+        depth_range: 0.0..1.0,
+    };
+    // create a dynamic state with the viewport specification
+    dynamic_state.viewports = Some(vec![viewport]);
+
+    // create a framebuffer for each image
+    images
+        .iter()
+        .map(|image| {
+            // map allows for a function to capture the element of
+            // the iterator and perform some calculation/tranformation on it
+            let image_view = view::ImageView::new(image.clone()).unwrap();
+            Arc::new(
+                Framebuffer::start(render_pass.clone())
+                    .add(image_view.clone())
+                    .unwrap()
+                    .build()
+                    .unwrap(),
+            ) as Arc<dyn FramebufferAbstract + Send + Sync>
+        })
+        .collect::<Vec<_>>()
+}
